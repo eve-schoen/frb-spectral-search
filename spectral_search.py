@@ -86,6 +86,7 @@ def plot_spectra(ww, start_bin, end_bin, valid_channels, time_range, DM, noise_s
                 
     plt.axvspan(a, b, alpha=0.2, color='orange', label='Expected 21 cm line based on DM')
     plt.legend()
+    plt.show()
     return frbspec, frbindexes, spectra, noise_std
 
 def calculate_noise(ww, time_range, on_range, valid_channels): 
@@ -208,6 +209,7 @@ def find_spectral_lines_multi(upchaned, sig1, sig2, sig3, wids, spec_ebar):
     ax.set_facecolor('none') 
     ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     ax.set_ylabel("Proportional to Flux")
+    plt.show()
     return upchaned, [ncorr1, ncorr2, ncorr3]
 
 
