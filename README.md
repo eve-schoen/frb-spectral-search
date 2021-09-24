@@ -1,2 +1,3 @@
 # frb_spectral_search
-Testing out github
+Scintillation with CHIME/FRB Baseband Data
+Eve Schoen, Calvin Leung, Kiyo Masui
