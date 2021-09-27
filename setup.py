@@ -22,4 +22,11 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(where="frb_spectral_search"),
     python_requires=">=3.6",
+    install_requires=[
+        'numpy>=1.19.2',
+        'scipy',
+        'matplotlib',
+        'astropy',
+        'statsmodels',
+        ]
     )
