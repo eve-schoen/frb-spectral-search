@@ -1,6 +1,8 @@
 # frb_spectral_search
-Measuring scintillation in the spectrum of FRBs with CHIME/FRB Baseband Data 
-Maintainers: Eve Schoen, Calvin Leung
+Tools for measuring scintillation in the spectrum of FRBs with CHIME/FRB Baseband Data 
+
+- Maintainers: Eve Schoen, Calvin Leung
+- 
 
 
 # Installation Instructions
