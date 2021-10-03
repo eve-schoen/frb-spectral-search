@@ -122,7 +122,7 @@ def acf_bands(spectra, n, plot_range = None, band_size = 40, normalize = True, s
     fig, ax = plt.subplots(1, 1)
     start = 0 #counts channels of bands
     n2 = len(fig.axes)
-    freqs = np.linspace(800, 400, 1024*16)
+    freqs = np.linspace(800, 400, 1024*16,endpoint=False)
     all_acf = []
     test = []
     for i in range(num_bands):
@@ -211,7 +211,7 @@ def ACF_new(spec, n, plot_range = None, band_size = 40,  skip = []):
     fig, ax = plt.subplots(1, 1)
     start = 0
     n2 = len(fig.axes)
-    freqs = np.linspace(800, 400, 1024*16)
+    freqs = np.linspace(800, 400, 1024*16,endpoint=False)
     all_acf = []
     set_scale=1
     for i in range(num_bands):
