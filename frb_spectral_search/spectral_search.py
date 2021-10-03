@@ -153,8 +153,7 @@ def plot_spectra(ww, start_bin, end_bin, valid_channels, time_range, DM, noise_s
     #ww is the data rid of rfi and filled already
     my_freq_id = np.arange(1024)
     frbspec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,start_bin:end_bin], my_freq_id)
-    fluxup = np.sum(np.sum(np.abs(frbspec)**2,axis = 0),axis = 0)
-    spectra = fluxup 
+    spectra = np.sum(np.sum(np.abs(frbspec)**2,axis = 0),axis = 0)
     #Correct for upchaannelization repeating 16 pattern
 #     fix = np.array([0.52225748, 0.58330915, 0.6868705, 0.80121821,
 #                          0.89386546, 0.95477358, 0.98662733, 0.99942558,
@@ -172,7 +171,7 @@ def plot_spectra(ww, start_bin, end_bin, valid_channels, time_range, DM, noise_s
     z = inverse_macquart(DM)
     a =  f_emit/(z+.3+1)
     b =  f_emit/(z-.3+1)
-    fluxww = np.sum(np.sum(np.abs(ww[:,:,start_bin:end_bin])**2, axis = 1), axis= 1)
+    fluxww = np.sum(np.abs(ww[:,:,start_bin:end_bin])**2, axis = (-2,-1))
     fluxww2 = np.array([])
     for x in fluxww:
         for i in range(16):
