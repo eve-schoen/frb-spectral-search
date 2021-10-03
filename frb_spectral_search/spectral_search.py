@@ -75,8 +75,8 @@ def find_lines_SNR_space(spectra, spec_ebar, sigs, noise_std, wids):
     filt_spec=spectra-bigcorr
     for x,y in zip(spectra, range(len(filt_spec))):
         if x ==0:
-            filt_spec[y] = 0  
-    for i in range(len(sigs)):      
+            filt_spec[y] = 0
+    for i in range(len(sigs)):
         sigarea = abs(scipy.integrate.trapz(sigs[i]))
         absorption = scipy.signal.correlate(filt_spec, sigs[i], mode='valid', method='fft' )/sigarea
         snr.append(absorption/noise_std[i][150:-149])
@@ -94,37 +94,37 @@ def find_lines_SNR_space(spectra, spec_ebar, sigs, noise_std, wids):
 
     shift = int(len(sigs[0])/2) #try this as not an int
     xaxis = np.linspace(800,400, 1024*16,endpoint=False)
-    
+
     ax1.plot(xaxis, filt_spec, color="#106bcc", label="filtered spectrum")
     ax1.fill_between(xaxis, filt_spec-spec_ebar, filt_spec+spec_ebar, color = '#106bcc',alpha = .25)
     strs = ['wid = ' + str(wids[i]) for i in range(len(wids))]
-    colors = [['#00e69d', '#00fc4c', '#a0fc00'], ['#ff00ff', '#d000ff', '#ff0062'], ['#2b00ff', '#0095ff', '#00eeff']] 
+    colors = [['#00e69d', '#00fc4c', '#a0fc00'], ['#ff00ff', '#d000ff', '#ff0062'], ['#2b00ff', '#0095ff', '#00eeff']]
     snrcolors= ['#47c995', 'm', 'b']
     #ax5= ax1.twinx()
     xaxis = xaxis[150:-149]
     for i in range(len(sigs)):
         ax6.plot(xaxis, snr[i], color=snrcolors[i],  alpha = .7, label=strs[i])
         colorcount = 0
-        for x in range(len(peaks[i])): 
+        for x in range(len(peaks[i])):
             ax6.plot(xaxis[peaks[i][x]], (snr[i][peaks[i][x]]), marker = 'x', color = colors[i][colorcount], linestyle='')
             ax1.plot(xaxis[peaks[i][x]], filt_spec[peaks[i][x]+150], marker = 'x', color = colors[i][colorcount], linestyle='')
             colorcount += 1
             if colorcount == len(colors[i]):
                 colorcount = 0
-                
-    wind = round(8*wids[0]) #window goes out +/- 5 sigma  --> increasing to 8 to see more        
+
+    wind = round(8*wids[0]) #window goes out +/- 5 sigma  --> increasing to 8 to see more
     xaxis_peaks = np.linspace(-wind*400/1024/16, wind*400/1024/16, 2*wind)[::-1]
     for x in range(len(peaks[0])):
-        x1 = peaks[0][x]   
+        x1 = peaks[0][x]
         ax2.plot(xaxis_peaks, filt_spec[x1+shift-wind: x1+shift+wind], color = colors[0][x])
         ax2.fill_between(xaxis_peaks, filt_spec[x1+shift-wind: x1+shift+wind]-spec_ebar[x1+shift-wind: x1+shift+wind], filt_spec[x1+shift-wind: x1+shift+wind]+spec_ebar[x1+shift-wind: x1+shift+wind], color=colors[0][x], alpha=.25)
-    wind = round(5*wids[1]) 
+    wind = round(5*wids[1])
     xaxis_peaks = np.linspace(-wind*400/1024/16, wind*400/1024/16, 2*wind)[::-1]
     for x in range(len(peaks[1])):
         x2 = peaks[1][x]
         ax3.plot(xaxis_peaks, filt_spec[x2+shift-wind: x2+shift+wind], color = colors[1][x])
         ax3.fill_between(xaxis_peaks, filt_spec[x2+shift-wind: x2+shift+wind]-spec_ebar[x2+shift-wind: x2+shift+wind], filt_spec[x2+shift-wind: x2+shift+wind]+spec_ebar[x2+shift-wind: x2+shift+wind], color=colors[1][x], alpha=.25)
-    wind = round(5*wids[2]) 
+    wind = round(5*wids[2])
     xaxis_peaks = np.linspace(-wind*400/1024/16, wind*400/1024/16, 2*wind)[::-1]
     for x in range(len(peaks[2])):
         x3 = peaks[2][x]
