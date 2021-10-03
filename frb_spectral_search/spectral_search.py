@@ -7,7 +7,7 @@ Created on Wed Jun  2 15:38:58 2021
 #corr calculations for noise added and only searching corr far from rfi
 import numpy as np
 import matplotlib.pyplot as plt
-from baseband_analysis.core.sampling import _upchannel as upchannel 
+from baseband_analysis.core.sampling import _upchannel as upchannel
 #this version allows me to upchannel a piece rather than everything, saving lots of time
 from frb_spectral_search.inverse_macquart import inverse_macquart
 import scipy.signal
@@ -24,7 +24,7 @@ from scipy.stats import median_absolute_deviation
 from baseband_analysis.analysis.snr import get_snr
 from baseband_analysis.core.sampling import fill_waterfall, _scrunch, downsample_power_gaussian, clip
 from baseband_analysis.core.signal import get_main_peak_lim, tiedbeam_baseband_to_power, get_weights
-from common_utils import delay_across_the_band 
+from common_utils import delay_across_the_band
 
 
 def gaussian(x, mu, sig):
@@ -42,12 +42,12 @@ def spectral_search_wrapper(data, DM=None, downsampling_factor=None, freq_id=Non
     #have to auto set downsampling_factor
     if downsampling_factor == None:
         downsampling_factor = data["tiedbeam_power"].attrs["time_downsample_factor"]
-    
+
     print(f'Using downsampling_factor_auto: {downsampling_factor}')
-        
-    
+
+
     data_clipped, h, ww, valid_channels,downsampling_factor,signal_temp,noise_temp, end_bin_frames, start_bin_frames, time_range, w = get_smooth_matched_filter_new(data, DM=DM, downsampling_factor = downsampling_factor)
-    
+
     print("time_range")
     print(time_range)
     on_range = [start_bin_frames, end_bin_frames]
@@ -138,7 +138,7 @@ def find_lines_SNR_space(spectra, spec_ebar, sigs, noise_std, wids):
     ax.spines['bottom'].set_color('none')
     ax.spines['left'].set_color('none')
     ax.spines['right'].set_color('none')
-    ax.set_facecolor('none') 
+    ax.set_facecolor('none')
     ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     #ax.set_ylabel("Proportional to Flux")
     plt.show()
@@ -151,7 +151,7 @@ def plot_spectra(ww, start_bin, end_bin, valid_channels, time_range, DM, noise_s
     # Purpose: plotting the onburst spectrum with the Macquart region for expected 21 cm line off of DM
     #shows spectrum after processing (upchannelization and noise subtracting and derippling compared to original spectrum)
     #ww is the data rid of rfi and filled already
-    my_freq_id = np.arange(1024)   
+    my_freq_id = np.arange(1024)
     frbspec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,start_bin:end_bin], my_freq_id)
     fluxup = np.sum(np.sum(np.abs(frbspec)**2,axis = 0),axis = 0)
     spectra = fluxup 
@@ -182,26 +182,26 @@ def plot_spectra(ww, start_bin, end_bin, valid_channels, time_range, DM, noise_s
                 fluxww2 = np.append(fluxww2, x)
     #plotting
     plt.figure(11)
-    
-        
-    
-    plt.fill_between(frbindexes, spectra-noise_std,spectra+noise_std, color='#006c8a', alpha= .5) 
+
+
+
+    plt.fill_between(frbindexes, spectra-noise_std,spectra+noise_std, color='#006c8a', alpha= .5)
     #plt.axvspan(a, b, alpha=0.2, color='orange', label='Expected 21 cm line based on DM')
     plt.plot(frbindexes, spectra, color='#006c8a', alpha= 1, label='Upchanneld Spectrum - Background')
     plt.plot(frbindexes,fluxww2 , color='#008a44', alpha = .8, label='Original Spectrum') #this is time vs flux we want frequency
-    
-    plt.xlabel('Freq. [MHz]', fontsize =16)  
+
+    plt.xlabel('Freq. [MHz]', fontsize =16)
     plt.ylabel('Proportional to flux [arbitrary units]', fontsize =16)
     plt.legend()
     plt.show()
     return frbspec, frbindexes, spectra, noise_std
 
-def calculate_noise(ww, time_range, on_range, valid_channels, sig1, sig2, sig3, sigs, scale =False): 
+def calculate_noise(ww, time_range, on_range, valid_channels, sig1, sig2, sig3, sigs, scale =False):
     #Purpose: calculates noise average and standard deviation based off of off-pulse data
-    #looks at chunks of time equal to the on-burst and processes them identically, 
+    #looks at chunks of time equal to the on-burst and processes them identically,
     #ww has waterfall and rfi but this upchannelizes and deripples
-    
-    noise_ranges =[] 
+
+    noise_ranges =[]
     l_on = on_range[1]-on_range[0]
     bottom = on_range[0]-l_on
 
@@ -213,7 +213,7 @@ def calculate_noise(ww, time_range, on_range, valid_channels, sig1, sig2, sig3, 
         noise_ranges.append([top-l_on, top])
         top += l_on
 
-    my_freq_id = np.linspace(0,1023, 1024) 
+    my_freq_id = np.linspace(0,1023, 1024)
 
     #initialize list of spectrums
     x= noise_ranges[0]
@@ -237,9 +237,9 @@ def calculate_noise(ww, time_range, on_range, valid_channels, sig1, sig2, sig3, 
     n1 = scipy.signal.correlate( np.ones(1000), sigs[0], mode='valid', method='fft' )[0]
     n2 = scipy.signal.correlate( np.ones(1000), sigs[1], mode='valid', method='fft' )[0]
     n3 = scipy.signal.correlate( np.ones(1000), sigs[2], mode='valid', method='fft' )[0]
-    
 
-    for x in noise_ranges[1:]: 
+
+    for x in noise_ranges[1:]:
         if count%5 ==0:
             print("spec" + str(count) +" out of " + str(len(noise_ranges)-1))
         count +=1
@@ -257,10 +257,10 @@ def calculate_noise(ww, time_range, on_range, valid_channels, sig1, sig2, sig3, 
         nscorr2 = np.reshape(added, [-1, 1024*16]) #use -1 so it fill in that dimension
         speccorr3 = scipy.signal.correlate(spec1d, sig3, mode='valid', method='fft' )/abs(scipy.integrate.trapz(sig3))
         added = np.append(nscorr3, spec1d)
-        nscorr3 = np.reshape(added, [-1, 1024*16]) 
+        nscorr3 = np.reshape(added, [-1, 1024*16])
     t_sys = np.nanmean(n_range_specs, 0)
     scale_fact = 1
-    my_freq_id = np.arange(1024)   
+    my_freq_id = np.arange(1024)
     frbspec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,on_range[0]:on_range[1]], my_freq_id)
     ospec = np.sum(np.sum(np.abs(frbspec)**2,axis = 0),axis = 0)
     ospec = np.multiply(ospec, 1/big_fix)
@@ -270,7 +270,7 @@ def calculate_noise(ww, time_range, on_range, valid_channels, sig1, sig2, sig3, 
         if x < 1:
             scale2 = np.append(scale2, 1)
         else:
-            scale2 = np.append(scale2, x)          
+            scale2 = np.append(scale2, x)
     if scale:
         scale_fact = np.nanmean(scale2)
     print('Error bar scaling factor: ' + str(scale_fact))
@@ -279,12 +279,12 @@ def calculate_noise(ww, time_range, on_range, valid_channels, sig1, sig2, sig3, 
     for x in [nscorr1, nscorr2, nscorr3]:
         corr_ebar.append(scipy.stats.median_abs_deviation(x, axis=0, nan_policy = 'omit')*scale_fact)
     return n_range_specs, t_sys, spec_ebar, (nscorr1, nscorr2, nscorr3), corr_ebar, scale_fact_calc
-def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False): 
+def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False):
     #Purpose: calculates noise average and standard deviation based off of off-pulse data
-    #looks at chunks of time equal to the on-burst and processes them identically, 
+    #looks at chunks of time equal to the on-burst and processes them identically,
     #ww has waterfall and rfi but this upchannelizes and deripples
-    
-    noise_ranges =[] 
+
+    noise_ranges =[]
     l_on = on_range[1]-on_range[0]
     bottom = on_range[0]-l_on
 
@@ -296,7 +296,7 @@ def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False
         noise_ranges.append([top-l_on, top])
         top += l_on
 
-    my_freq_id = np.linspace(0,1023, 1024) 
+    my_freq_id = np.linspace(0,1023, 1024)
 
     #initialize list of spectrums
     x= noise_ranges[0]
@@ -311,7 +311,7 @@ def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False
     n_range_specs = spec1d
     count = 1
 
-    for x in noise_ranges[1:200]:   
+    for x in noise_ranges[1:200]:
         if count%5 ==0:
             print("spec" + str(count) +" out of " + str(len(noise_ranges)-1))
         count +=1
@@ -322,7 +322,7 @@ def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False
         n_range_specs = np.reshape(added, [-1, 1024*16]) #use -1 so it fill in that dimension
     t_sys = np.nanmean(n_range_specs, 0)
     scale_fact = 1
-    my_freq_id = np.arange(1024)   
+    my_freq_id = np.arange(1024)
     frbspec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,on_range[0]:on_range[1]], my_freq_id)
     ospec = np.sum(np.sum(np.abs(frbspec)**2,axis = 0),axis = 0)
     ospec = np.multiply(ospec, 1/big_fix)
@@ -332,7 +332,7 @@ def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False
         if x < 1:
             scale2 = np.append(scale2, 1)
         else:
-            scale2 = np.append(scale2, x)          
+            scale2 = np.append(scale2, x)
     if scale:
         scale_fact = np.nanmean(scale2)
     print('Error bar scaling factor: ' + str(scale_fact))
@@ -343,8 +343,8 @@ def find_spectral_lines_multi(upchaned, sig1, sig2, sig3, wids, spec_ebar, nscor
     #compares highest peaks with next highest peaks to help classify the peaks as real
     #input: orig = upchannelized flux vs frequency data
     corr1 = scipy.signal.correlate(upchaned, sig1, mode='valid', method='fft' ) #pretty much same thing as match filter, also fftconvolve
-    corr2 = scipy.signal.correlate(upchaned, sig2, mode='valid', method='fft' ) 
-    corr3 = scipy.signal.correlate(upchaned, sig3, mode='valid', method='fft' ) 
+    corr2 = scipy.signal.correlate(upchaned, sig2, mode='valid', method='fft' )
+    corr3 = scipy.signal.correlate(upchaned, sig3, mode='valid', method='fft' )
     #normalization to -1
     n1 = scipy.signal.correlate( np.ones(1000), sig1, mode='valid', method='fft' )
     ncorr1 = corr1/abs(scipy.integrate.trapz(sig1))
@@ -353,7 +353,7 @@ def find_spectral_lines_multi(upchaned, sig1, sig2, sig3, wids, spec_ebar, nscor
     n3 = scipy.signal.correlate( np.ones(1000), sig3, mode='valid', method='fft' )
     ncorr3 = corr3/abs(scipy.integrate.trapz(sig3))#/(-n3[0])
     #fig7, (ax1, ax2) = plt.subplots(2, 1)
-    
+
     fig71 = plt.figure(9)
     gs1 = fig71.add_gridspec(nrows=3, ncols=3, left=0.05, right=0.98, wspace=0.05)
     ax1 = fig71.add_subplot(gs1[:-1, :])
@@ -377,7 +377,7 @@ def find_spectral_lines_multi(upchaned, sig1, sig2, sig3, wids, spec_ebar, nscor
     ax1.fill_between(xaxis[150:-149], ncorr2-nscorrs_stddev[1][150:-149], ncorr2+nscorrs_stddev[1][150:-149], color='m',  alpha = .3)
     ax1.plot(xaxis[150:-149], ncorr3, 'b',  alpha = .7, label=str3)
     ax1.fill_between(xaxis[150:-149], ncorr3-nscorrs_stddev[2][150:-149], ncorr3+nscorrs_stddev[2][150:-149], color='b',  alpha = .3)
-    good_peaks1, bad_peaks1 = find_good_matches(ncorr1, upchaned, wids[0]) 
+    good_peaks1, bad_peaks1 = find_good_matches(ncorr1, upchaned, wids[0])
     good_peaks2, bad_peaks2 = find_good_matches(ncorr2, upchaned, wids[1])
     good_peaks3, bad_peaks3 = find_good_matches(ncorr3, upchaned, wids[2])
     #ax1.set_ylim([0, 1e4])
@@ -388,26 +388,26 @@ def find_spectral_lines_multi(upchaned, sig1, sig2, sig3, wids, spec_ebar, nscor
         ax1.plot(xaxis[150:-149][good_peaks1[x]], (ncorr1[good_peaks1[x]]), marker = 'x', color = colors1[x], linestyle='')
     for x in range(len(good_peaks2)):
         ax1.plot(xaxis[150:-149][good_peaks2[x]], ncorr2[good_peaks2[x]], marker = 'x', color = colors2[x], linestyle='')
-    
+
     for x in range(len(good_peaks3)):
         ax1.plot(xaxis[150:-149][good_peaks3[x]], ncorr3[good_peaks3[x]], marker = 'x', color = colors3[x], linestyle='')
     fig71.legend()
-    
+
 
     for x in range(len(good_peaks1)):
         wind = round(5*wids[0]) #window goes out +/- 5 sigma
         xaxis_peaks = xaxis[40-wind: 40+wind]-xaxis[40]
-        x1 = good_peaks1[x]   
+        x1 = good_peaks1[x]
         ax2.plot(xaxis_peaks, upchaned[x1+shift-wind: x1+shift+wind], color = colors1[x])
         ax2.fill_between(xaxis_peaks, upchaned[x1+shift-wind: x1+shift+wind]-spec_ebar[x1+shift-wind: x1+shift+wind], upchaned[x1+shift-wind: x1+shift+wind]+spec_ebar[x1+shift-wind: x1+shift+wind], color=colors1[x], alpha=.25)
     for x in range(len(good_peaks2)):
-        wind = round(5*wids[1]) 
+        wind = round(5*wids[1])
         xaxis_peaks = xaxis[40-wind: 40+wind]-xaxis[40]
         x2 = good_peaks2[x]
         ax3.plot(xaxis_peaks, upchaned[x2+shift-wind: x2+shift+wind], color = colors2[x])
         ax3.fill_between(xaxis_peaks, upchaned[x2+shift-wind: x2+shift+wind]-spec_ebar[x2+shift-wind: x2+shift+wind], upchaned[x2+shift-wind: x2+shift+wind]+spec_ebar[x2+shift-wind: x2+shift+wind], color=colors2[x], alpha=.25)
     for x in range(len(good_peaks3)):
-        wind = round(5*wids[2]) 
+        wind = round(5*wids[2])
         xaxis_peaks = xaxis[40-wind: 40+wind]-xaxis[40]
         x3 = good_peaks3[x]
         #olderror bar way
@@ -422,7 +422,7 @@ def find_spectral_lines_multi(upchaned, sig1, sig2, sig3, wids, spec_ebar, nscor
     ax.spines['bottom'].set_color('none')
     ax.spines['left'].set_color('none')
     ax.spines['right'].set_color('none')
-    ax.set_facecolor('none') 
+    ax.set_facecolor('none')
     ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     ax.set_ylabel("Proportional to Flux")
     plt.show()
@@ -432,19 +432,19 @@ def find_spectral_lines_multi(upchaned, sig1, sig2, sig3, wids, spec_ebar, nscor
 def find_good_matches(corr, upchaned, wid):
     #inputs: corr- cross-correlation of 1d-spectra and the signal (gaussian dip)
     #upchaned - the 1d-spectra
-    #-outputs possible dips by finding maximum in corr and ignoring values close to zero in correlation and 1d-spectra 
+    #-outputs possible dips by finding maximum in corr and ignoring values close to zero in correlation and 1d-spectra
     #since those are assumed to be rfi
-    found_peaks= scipy.signal.find_peaks(corr)[0]#, width = 2*wid)[0] #might consider putting a widths condition here that is determined by astrophysics, 
-    
+    found_peaks= scipy.signal.find_peaks(corr)[0]#, width = 2*wid)[0] #might consider putting a widths condition here that is determined by astrophysics,
+
       #currently going for wid at least one sigma
     indexpeak = (np.argsort(corr)[::-1]) #sorting to find the largest correlations and then will compare to peaks
     new_indexpeak = []
     for x,y in zip(indexpeak, upchaned[150:-149][indexpeak]):
         if x in found_peaks: #using two fold approach to not double count high parts of peak, could do this by specifying distance between points as well
-            #removing rfi and around rfi from consideration 
+            #removing rfi and around rfi from consideration
             near = []
-            for i in range(int(5*wid+1)):#don't want to be 8 sigma from rfi 
-                
+            for i in range(int(5*wid+1)):#don't want to be 8 sigma from rfi
+
                 near.append(upchaned[150+(x-i)]==0)
                 near.append(upchaned[150+(x+i)]==0)
             if np.all(np.logical_not(near)): #need all of near to be false
@@ -476,11 +476,11 @@ def get_smooth_matched_filter_new(
             return_full = True,
             fill_missing_time = False)
     start_power_bins_temp, end_power_bins_temp = get_main_peak_lim(power_temp,
-            floor_level=floor_level, 
+            floor_level=floor_level,
             diagnostic_plots=False,
             normalize_profile=True) # calculate start and end here just to make sure the clipper does not lose the pulse.
     pulse_span_power_bins = np.array([start_power_bins_temp,end_power_bins_temp])
-    pulse_span_bottom = data['time0']['ctime'][-1] + 2.56e-6 * pulse_span_power_bins  
+    pulse_span_bottom = data['time0']['ctime'][-1] + 2.56e-6 * pulse_span_power_bins
     print('The arguments were:')
     print(f'get_smooth_matched_filter(data,DM = {DM_clip},downsampling_factor = {downsampling_factor})')
     figure()
@@ -490,7 +490,7 @@ def get_smooth_matched_filter_new(
     valid_span_unix_bottom = data['time0']['ctime'][-1] + 2.56e-6 * valid_span_power_bins * downsampling_factor
     # top corners taken from data shape
     dm_delay_sec = delay_across_the_band(DM = data['tiedbeam_baseband'].attrs['DM'],
-        freq_high = data.index_map['freq']['centre'][0], 
+        freq_high = data.index_map['freq']['centre'][0],
         freq_low = data.index_map['freq']['centre'][-1])
     valid_span_unix_top = data['time0']['ctime'][0] + dm_delay_sec + np.array([0,data.ntime]) * 2.56e-6
     valid_times = [max(valid_span_unix_bottom[0],valid_span_unix_top[0]),
@@ -499,15 +499,15 @@ def get_smooth_matched_filter_new(
     toa_400 = np.mean(valid_times) # calculate the center of the data within the valid region
     duration = valid_times[1] - valid_times[0] # calculate duration in seconds
     print(f"sampling.clip(data, dm = {DM_clip:0.3f}, toa_400 = {toa_400}, ref_freq = {data.index_map['freq']['centre'][-1]},duration = {duration}, pad = True")
-    data_clipped = clip(data,toa_400 = toa_400, 
-                                 duration = duration, 
+    data_clipped = clip(data,toa_400 = toa_400,
+                                 duration = duration,
                                  ref_freq = data.index_map['freq']['centre'][-1],
                                  dm = DM_clip,inplace = False,
                                  pad = True)
     tiedbeam_baseband_to_power(data_clipped,time_downsample_factor = 1,
                                       dedisperse = False,
                                       dm = DM_clip) # post process the data after clipping
-    # 3) run get_SNR one more time. This time, we just need time_range_power_bins. 
+    # 3) run get_SNR one more time. This time, we just need time_range_power_bins.
     _, _, power, _, _, valid_channels, time_range_power_bins, _, downsampling_factor = get_snr(
         data_clipped,
         diagnostic_plots=False,
@@ -521,8 +521,8 @@ def get_smooth_matched_filter_new(
     imshow(power,aspect = 'auto')
     if lim is None:
         # Calculate limits and convert from power bins back into frame bins.
-        start_power_bins, end_power_bins = get_main_peak_lim(power, 
-                floor_level=floor_level, 
+        start_power_bins, end_power_bins = get_main_peak_lim(power,
+                floor_level=floor_level,
                 diagnostic_plots=False,
                 normalize_profile=True)
         end_power_bins += 1
@@ -637,9 +637,9 @@ def get_smooth_matched_filter_new(
         ax_right = fig.add_subplot(gs[1, 1])
         plot_matched_filter_two_pols(ax_top,flux,h_offset,pulse_lim = lim,
                                     downsampling_factor = downsampling_factor)
-        plot_ds_waterfall(ax_left,ww[:,0], pulse_lim = lim , 
+        plot_ds_waterfall(ax_left,ww[:,0], pulse_lim = lim ,
                           downsampling_factor = downsampling_factor)
-        plot_ds_waterfall(ax_right,ww[:,1], pulse_lim = lim, 
+        plot_ds_waterfall(ax_right,ww[:,1], pulse_lim = lim,
                           downsampling_factor = downsampling_factor)
         if type(diagnostic_plots) is str:
             plt.savefig(diagnostic_plots,dpi = 300)
@@ -651,8 +651,8 @@ def get_smooth_matched_filter_new(
         return data_clipped, h, ww, valid_channels,downsampling_factor,signal_temp,noise_temp, end_bin_frames, start_bin_frames, valid_time_range, w
     #I added stuff after noise_temp
     else:
-        return 
-    
+        return
+
 def autocorr(spectra, noise_spec, plot_range = None):
     noise_spec_bigsub = gauss_subtract_wo_and_replace_zero(noise_spec, 600)[150:-149]
     spec_bigsub = gauss_subtract_wo_and_replace_zero(spectra, 600)[150:-149]
@@ -673,7 +673,7 @@ def autocorr(spectra, noise_spec, plot_range = None):
             ax1.xaxis.set_minor_locator(MultipleLocator(1))
     ax1.set_xlabel( "frequency lag (24 kHz channels)" )
     plt.show()
-    
+
 def autocorr_norfi(spectra, noise_spec, plot_range = None):
     noise_spec_bigsub = gauss_subtract_wo_and_replace_zero(noise_spec, 600)[150:-149]
     spec_bigsub = gauss_subtract_wo_and_replace_zero(spectra, 600)[150:-149]
@@ -770,12 +770,12 @@ def acf_statmodels(spectra, noise_spec, plot_range = None):
     plt.show()
     return autocorr, nautocorr
 def acf_statmodels2(spectra, n, plot_range = None):
-    
+
     spec_bigsub = gauss_subtract_wo_and_replace_zero(spectra, 600)[150:-149]
     specnan = spec_bigsub.copy()
     specnan[spec_bigsub ==0] = np.nan
-    
-    
+
+
     autocorr = statsmodels.tsa.stattools.acf(specnan,nlags = 1024*16, adjusted = True, fft =False, missing = 'conservative')
     fig, (ax1) = plt.subplots(1, 1, sharex =True, sharey  = True)
     ax1.plot(autocorr, 'r', alpha= .3, label='spectrum autocorrelation')
@@ -784,18 +784,18 @@ def acf_statmodels2(spectra, n, plot_range = None):
         noisenan = noise_spec_bigsub.copy()
         noisenan[noise_spec_bigsub ==0] = np.nan
         nautocorr =  statsmodels.tsa.stattools.acf(noisenan,nlags = 1024*16,adjusted = True,  fft =False, missing = 'conservative')
-        
+
         if i == 1:
             ax1.plot(nautocorr, 'b', alpha = .05,label = 'noise autocorrelations')
         else:
             ax1.plot(nautocorr, 'b', alpha = .05)
-        
+
     ax1.legend( loc='upper left')
-    ax1.set_ylim([-1, 1.5])      
+    ax1.set_ylim([-1, 1.5])
             #align_yaxis(ax1, ax5)
     #ax1.legend(loc='upper left')
     plt.legend()
-    
+
     if plot_range != None:
         plt.xlim([0,plot_range])
         if plot_range < 101:
@@ -803,7 +803,7 @@ def acf_statmodels2(spectra, n, plot_range = None):
     ax1.set_xlabel( "frequency lag (24 kHz channels)" )
     plt.show()
     return autocorr, nautocorr
-def acf_naive2(spectra, n, plot_range = None, plot=True):   
+def acf_naive2(spectra, n, plot_range = None, plot=True):
     spec_bigsub = gauss_subtract_wo_and_replace_zero(spectra, 600)[150:-149]
     specnan = spec_bigsub.copy()
     specnan[spec_bigsub ==0] = np.nan
@@ -823,7 +823,7 @@ def acf_naive2(spectra, n, plot_range = None, plot=True):
              #using the last one doesn't procure good results and 1st is adjacent so this one
             if plot:
                 ax5.plot(nautocorr, 'b', alpha = .8/len(n),label = 'noise autocorrelations')
-            
+
         elif plot:
             ax5.plot(nautocorr, 'b', alpha = .8/len(n))
         allnautocorr[i, :] = nautocorr
@@ -834,11 +834,11 @@ def acf_naive2(spectra, n, plot_range = None, plot=True):
     aunit = max(autocorr)
     if plot:
         ax1.set_ylim([-aunit/8, aunit+aunit/16])
-        ax5.set_ylim([-aunitn/8, aunitn+aunitn/16])  
+        ax5.set_ylim([-aunitn/8, aunitn+aunitn/16])
         ax1.legend( loc='upper left')
         ax5.legend(loc='upper right')
         plt.legend()
-    
+
         if plot_range != None:
             plt.xlim([0,plot_range])
             if plot_range < 101:
@@ -875,12 +875,12 @@ def acf_bands(spectra, n, plot_range = None, band_size = 40, normalize = True, s
                 for j in range(len(nacf)):
                     nacf[j, :] =nacf[j, :]/maxes[j]
             ax.plot( acf+i*.2-.8, alpha= 1,color = colors[i], label=lab)
-            ax.plot(np.transpose(nacf) +i*.2-.8, color = colors[i], alpha = .8/len(nacf)) 
+            ax.plot(np.transpose(nacf) +i*.2-.8, color = colors[i], alpha = .8/len(nacf))
             if plot_range != None:
                 ax.set_xlim([0,plot_range])
                 if plot_range < 101:
                     ax.xaxis.set_minor_locator(MultipleLocator(1))
-        
+
         start += channel_sz
     ax.set_xlabel( "frequency lag (24 kHz channels)" , fontsize =16 )
     plt.legend(bbox_to_anchor=(1, 0), loc='lower right', ncol=1)
@@ -910,7 +910,7 @@ def acf_lombscarg(spectra, noise_spec, plot_range = None):
             ax1.xaxis.set_minor_locator(MultipleLocator(1))
     ax1.set_xlabel( "frequency lag (24 kHz channels)", fontsize =16 )
     plt.show()
-    
+
 def gauss_subtract_wo_and_replace_zero(spec , wid):
     #returns spectrum minus the smoothed gaussian with zeros uneffected
     bigsig = gaussian(np.linspace(-100,100,300), 0, wid)
@@ -918,7 +918,7 @@ def gauss_subtract_wo_and_replace_zero(spec , wid):
     spec_no0 = spec[spec != 0]
     bigcorr = scipy.signal.correlate(spec_no0, bigsig, mode='same', method='fft' )/sigarea
     msub_spec = spec.copy()
-    msub_spec[spec != 0 ] = spec_no0-bigcorr #changed - to / just to try, no work, 
+    msub_spec[spec != 0 ] = spec_no0-bigcorr #changed - to / just to try, no work,
     #msub_spec[spec != 0 ] =msub_spec[spec != 0 ]  - np.median(msub_spec[spec != 0 ])#minus median
 #     plt.figure()
 #     plt.plot(msub_spec[150:-149])
@@ -926,12 +926,12 @@ def gauss_subtract_wo_and_replace_zero(spec , wid):
     return msub_spec[150:-149]
 
 def clean_rfi_more(n, noise_spec, spectra, noise_std):
-    #alters origianl which I dont want :/ 
+    #alters origianl which I dont want :/
     noise_spec2 = np.copy(noise_spec)
     spectra2 = np.copy(spectra)
     n2 = np.copy(n)
     baseline  = np.median(noise_spec)
-    new_rfiup = [noise_spec2> 3*noise_std+baseline] 
+    new_rfiup = [noise_spec2> 3*noise_std+baseline]
     new_rfidown = [noise_spec2 < baseline - 3*noise_std]
     new_rfi = np.logical_or(new_rfiup, new_rfidown)[0, :]
     noise_spec2[new_rfi] = 0
@@ -940,7 +940,7 @@ def clean_rfi_more(n, noise_spec, spectra, noise_std):
     return n2, noise_spec2, spectra2
 
 def half_max_width(acf):
-    height = acf[0] 
+    height = acf[0]
     val = height
     index = 0
     while val > height/2:
