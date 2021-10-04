@@ -197,7 +197,112 @@ def gauss_smooth_divide(spec , wid):
     smoothdivided_spec[spec != 0 ] = spec_no0/smooth #changed - to / just to try, no work,
     smoothdivided_spec[spec == 0 ] = np.nan
     return np.array(smoothdivided_spec[150:-149]) 
-
+def gauss_smooth_divide_2(spec_on, spec_offs):
+    #returns spectrum minus the smoothed gaussian with zeros uneffected
+    n = spec_offs.copy() #to avoid rewriting spec_offs
+    spec_on_no0 = spec_on[spec_on != 0]
+    xs  = np.arange(len(spec_on_no0))
+    t = np.linspace(xs[1], xs[-2], num= 50)
+    k = 3
+    t = np.r_[(xs[0],)*(k+1),
+          t,
+          (xs[-1],)*(k+1)]
+    spline = make_lsq_spline(xs, spec_on_no0, t, k= 3) 
+    smooth = spline(xs)
+    smoothdivided_spec = spec_on.copy()
+    smoothdivided_spec[spec_on != 0 ] = spec_on_no0/smooth #changed - to / just to try, no work,
+    smoothdivided_spec_offs  = []
+    for i in range(len(n)):
+        temp = n[i]
+        #dividing by smooth on spectrum creates acf in off spectrum so.. creating smooth for each
+        spline = make_lsq_spline(xs, temp[temp != 0 ], t, k= 3) 
+        temp[temp != 0 ] = temp[temp!= 0 ]/spline(xs)
+        temp[temp==0] = np.nan
+        smoothdivided_spec_offs.append(temp)
+    smoothdivided_spec[spec_on == 0 ] = np.nan
+    return np.array(smoothdivided_spec) , np.array(smoothdivided_spec_offs)
+    
+def acf_normalized(spec, n, plot_range = None, band_size = 40,  skip = []):
+    #inputs band size in MHz
+    freqs = np.linspace(800, 400, num=1024*16, endpoint =False)
+    band_size_channels = round(band_size/.02439024)
+    smoothdivided_spec_on, smoothdivided_spec_off = gauss_smooth_divide_2(spec, n)
+    colors = ['darkviolet', 'b','c', 'mediumseagreen', 'tab:olive', 'gold', 'tab:orange', 'r',  'lightcoral' ]
+    fig, ax = plt.subplots(1, 1)
+    all_acf = []
+    bands = []
+    start = 0
+    num_bands = len(spec)//band_size_channels
+    widths = []
+    perrs = []
+    offs_std = []
+    for i in range(num_bands):
+        if i in skip:
+            all_acf.append([])
+            offs_std.append([])
+            pass
+        else:
+            spec_slice_on = smoothdivided_spec_on[i*band_size_channels:(i+1)*band_size_channels]  
+            acf_on = autocorr_naive_nan(spec_slice_on-1)
+            acf_offs = []
+            for j in range(len(n)):
+                piece = smoothdivided_spec_off[j]
+                piece = np.array(piece[i*band_size_channels:(i+1)*band_size_channels])
+                acf_piece = autocorr_naive_nan(piece-1) #normalizating from one to zero...
+                acf_offs.append(acf_piece/acf_piece[0]) #normalizing by the point at zero because that is biased by random noise
+            on_m_off = acf_on#-np.nanmean(acf_offs)
+            final_acf = acf_on/acf_on[0]
+            std = np.std(acf_offs, axis = 0) #want size to match on and don't want to include rfi channels so not using np.nanstd 
+            offs_std.append(std[~np.isnan(std)])
+            all_acf.append(final_acf)
+            print(i)
+            scale= 1
+            lab =  str(round(freqs[start+band_size_channels])) + '-'+ str(round(freqs[start])) + ' MHz'
+            bands.append((freqs[start]+freqs[start+band_size_channels])/2)
+            
+            
+            ax.plot( final_acf+(num_bands-len(skip)-i+1)*.2*scale, alpha= 1,color = colors[i], label=lab)
+            ax.plot(np.transpose(acf_offs) +(num_bands-len(skip)-i+1)*.2*scale, color = colors[i], alpha = .8/len(acf_offs))
+                      
+            if plot_range != None:
+                ax.set_xlim([0,plot_range])
+                if plot_range < 101: #more fine grid lines is smaller plot range
+                    ax.xaxis.set_minor_locator(MultipleLocator(1))
+        start += band_size_channels
+        
+    #fitting cauchy function to each acf abnd
+    widths =[]
+    fdc_error_bars = []
+    count = 0
+    popcount= 0
+    significant_bands = bands[:]
+    if plot_range != None:
+        truncate = plot_range
+    else:
+        truncate = 0
+    for i in all_acf: 
+        if i != []:
+            b=np.array(i)
+            b = b[~np.isnan(b)]
+            popt, pcov  = hmhw_cauchy(b, sigma = offs_std[count]  , exclude_zero =True, truncate = truncate)
+            perr = np.sqrt(np.diag(pcov)) #one standard deviation error
+            widths.append(abs(popt[1])*.02439024) #converting channels to MHz
+            fdc_error_bars.append(perr[1] *.02439024)
+            if abs(popt[0]) > 3*abs(perr[0]): # only want signifgant points
+#                 widths.append(abs(popt[1])*.02439024) #converting channels to MHz
+#                 fdc_error_bars.append(perr[1] *.02439024)
+                xs  = np.arange(len(final_acf))+1 
+                ax.plot(xs, cauchy_func(xs, popt[0], popt[1])+(num_bands-len(skip)-count+1)*.2*scale, 'k--', alpha = .8 )
+                popcount+=1
+            else:
+                significant_bands.pop(popcount)
+        count += 1
+    ax.set_ylim([-0.5, 3])
+    ax.set_xlabel( "frequency lag (24 kHz channels)" )
+    ax.set_ylabel("Correlation amplitude [arbitrary units]")
+    plt.legend(bbox_to_anchor=(1, 0), loc='lower right', ncol=1)
+    #return all_acf, significant_bands, widths, fdc_error_bars
+    return all_acf, bands, widths, fdc_error_bars
 def ACF_new(spec, n, plot_range = None, band_size = 40,  skip = []):
     smoothdivided_spec_on = gauss_smooth_divide(spec, 600)
     smoothdivided_spec_off = []
