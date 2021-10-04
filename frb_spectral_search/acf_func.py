@@ -47,8 +47,8 @@ def calc_fdcs(all_acf, bands):
     plt.ylabel("f_dc")
     plt.legend()
     plt.show()
-    
-def acf_naive2(spectra, n, plot_range = None, plot=True):   
+
+def acf_naive2(spectra, n, plot_range = None, plot=True):
     spec_bigsub = gauss_subtract_wo_and_replace_zero(spectra, 600)[150:-149] #double removing 150?
     specnan = spec_bigsub.copy()
     specnan[spec_bigsub ==0] = np.nan
@@ -68,7 +68,7 @@ def acf_naive2(spectra, n, plot_range = None, plot=True):
              #using the last one doesn't procure good results and 1st is adjacent so this one
             if plot:
                 ax5.plot(nautocorr, 'b', alpha = .8/len(n),label = 'noise autocorrelations')
-            
+
         elif plot:
             ax5.plot(nautocorr, 'b', alpha = .8/len(n))
         allnautocorr[i, :] = nautocorr
@@ -79,11 +79,11 @@ def acf_naive2(spectra, n, plot_range = None, plot=True):
     aunit = max(autocorr)
     if plot:
         ax1.set_ylim([-aunit/8, aunit+aunit/16])
-        ax5.set_ylim([-aunitn/8, aunitn+aunitn/16])  
+        ax5.set_ylim([-aunitn/8, aunitn+aunitn/16])
         ax1.legend( loc='upper left')
         ax5.legend(loc='upper right')
         plt.legend()
-    
+
         if plot_range != None:
             plt.xlim([0,plot_range])
             if plot_range < 101:
@@ -122,7 +122,7 @@ def acf_bands(spectra, n, plot_range = None, band_size = 40, normalize = True, s
     fig, ax = plt.subplots(1, 1)
     start = 0 #counts channels of bands
     n2 = len(fig.axes)
-    freqs = np.linspace(800, 400, 1024*16)
+    freqs = np.linspace(800, 400, 1024*16,endpoint=False)
     all_acf = []
     test = []
     for i in range(num_bands):
@@ -150,12 +150,13 @@ def acf_bands(spectra, n, plot_range = None, band_size = 40, normalize = True, s
                 ax.set_xlim([0,plot_range])
                 if plot_range < 101:
                     ax.xaxis.set_minor_locator(MultipleLocator(1))
-        
+
         start += channel_sz
     ax.set_xlabel( "frequency lag (24 kHz channels)" )
     plt.legend(bbox_to_anchor=(1, 0), loc='lower right', ncol=1)
     plt.show()
     return all_acf, bands, test
+
 def plot_bands(all_acf, bands, remove_nan=True):
     if remove_nan:
         for i in range(len(all_acf)):
@@ -163,7 +164,7 @@ def plot_bands(all_acf, bands, remove_nan=True):
             all_acf[i] = b[~np.isnan(b)]
     widths =[]
     for i in all_acf:
-    
+
         if i != []:
             widths.append(abs(hmhw_cauchy(i, exclude_zero =True))*.024) #converting channels to MHz
 
@@ -180,7 +181,7 @@ def plot_bands(all_acf, bands, remove_nan=True):
     plt.xlabel('Freq. [MHz]', fontsize =16)
     plt.ylabel("f_dc [MHz]", fontsize =16)
     plt.legend()
-def wrapper(noise_spec, spectra, n, noise_std, skip): 
+def wrapper(noise_spec, spectra, n, noise_std, skip):
     a = noise_spec.copy()
     b= spectra.copy()
     c= n.copy()
@@ -196,6 +197,7 @@ def gauss_smooth_divide(spec , wid):
     smoothdivided_spec = spec.copy()
     smoothdivided_spec[spec != 0 ] = spec_no0/smooth #changed - to / just to try, no work,
     smoothdivided_spec[spec == 0 ] = np.nan
+    
     return np.array(smoothdivided_spec[150:-149]) 
 def gauss_smooth_divide_2(spec_on, spec_offs):
     #returns spectrum minus the smoothed gaussian with zeros uneffected
@@ -303,6 +305,7 @@ def acf_normalized(spec, n, plot_range = None, band_size = 40,  skip = []):
     plt.legend(bbox_to_anchor=(1, 0), loc='lower right', ncol=1)
     #return all_acf, significant_bands, widths, fdc_error_bars
     return all_acf, bands, widths, fdc_error_bars
+
 def ACF_new(spec, n, plot_range = None, band_size = 40,  skip = []):
     smoothdivided_spec_on = gauss_smooth_divide(spec, 600)
     smoothdivided_spec_off = []
@@ -315,7 +318,7 @@ def ACF_new(spec, n, plot_range = None, band_size = 40,  skip = []):
     fig, ax = plt.subplots(1, 1)
     start = 0
     n2 = len(fig.axes)
-    freqs = np.linspace(800, 400, 1024*16)
+    freqs = np.linspace(800, 400, 1024*16,endpoint=False)
     all_acf = []
     set_scale=1
     for i in range(num_bands):
@@ -324,19 +327,19 @@ def ACF_new(spec, n, plot_range = None, band_size = 40,  skip = []):
             pass
         else:
             acf_on = autocorr_naive_nan(smoothdivided_spec_on[start:start+channel_sz])
-            
+
             acf_off = []
             for j in range(len(n)):
                 acf_off_piece = autocorr_naive_nan(smoothdivided_spec_off[j][start:start+channel_sz])
-                
+
                 acf_off.append(acf_off_piece/acf_off_piece[0])
             print(len(acf_on))
             print(len(np.nanmean(acf_off, axis=0)))
             on_minus_off = acf_on - np.nanmean(acf_off, axis=0) #for each band
             final_acf = on_minus_off/on_minus_off[0] # divide by zero lag term
-            
+
             all_acf.append(final_acf)
-            
+
             lab =  str(round(freqs[start])) + '-'+ str(round(freqs[start+channel_sz])) + ' MHz'
             bands.append((freqs[start]+freqs[start+channel_sz])/2)
             ax.plot( final_acf+i*.2*set_scale, alpha= 1,color = colors[i], label=lab) #spacing out plots by .2 times general scale of first point
@@ -346,13 +349,13 @@ def ACF_new(spec, n, plot_range = None, band_size = 40,  skip = []):
                 ax.set_xlim([0,plot_range])
                 if plot_range < 101: #more fine grid lines is smaller plot range
                     ax.xaxis.set_minor_locator(MultipleLocator(1))
-        
+
         start += channel_sz
     ax.set_xlabel( "frequency lag (24 kHz channels)" )
     plt.legend(bbox_to_anchor=(1, 0), loc='lower right', ncol=1)
     plt.show()
     return all_acf, bands, acf_off
-    
+
 def acf_from_stratch(spec, n, plot_range = None, band_size = 40,  skip = []):
     #inputs band size in MHz
     band_size_channels = round(band_size/.024)
