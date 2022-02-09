@@ -14,7 +14,7 @@ def autocorr_naive_nan(x):
 def cauchy_func(del_nu,  m, f_dc):
     return m / (del_nu**2 + f_dc**2)
 
-def hmhw_cauchy(acf, exclude_zero = True): #hlaf max half width
+def hmhw_cauchy(acf, exclude_zero = True): #half max half width
     if exclude_zero:
         start = 1
         acf= acf[1:]
@@ -45,15 +45,13 @@ def plot_bands(all_acf, bands,widths, error_bars,  remove_nan=True):
     popt, pcov = curve_fit(exponential,xdata , ydata,   sigma = error_bars, absolute_sigma = False) #initial guesses added to prevent runtime error
     #p0=[popt1[0], 4],
     perr1 = np.sqrt(np.diag(pcov1))#*(600)**4 #one standard deviation error
-    perr = np.sqrt(np.diag(pcov))[0]#*(600)**popt[1]
+    perr = np.sqrt(np.diag(pcov))[0
     experr = np.sqrt(np.diag(pcov))[1]
     plt.plot(xs, (popt[0]*(xs/600 )**popt[1]), label=r'fit='+str(round(popt[0], 3))+' (delta_nu)^' +str(round(popt[1], 3)) + '+/-'+ str(round(experr, 2)))
     plt.plot(xs, (popt1*(xs/600)**4),'r',  label=r'fit='+str(round(popt1[0], 3))+' (delta_nu)^4' )
     plt.xlabel('Freq. [MHz]', fontsize =16)
     plt.ylabel(r"$\nu_{dc}$ [MHz]", fontsize =16)
     plt.legend()
-    #fdc600 = str(freq_fourth(600, popt1)) + '+/-' +  str(perr1) 
-    #fdc600_powerlaw = str(exponential(600, popt[0], popt[1])) + '+/-' +  str(perr) 
     fdc600 = str(popt1) + '+/-' +  str(perr1) 
     
     fdc600_powerlaw = str(popt[0]) + '+/-' +  str(perr)
@@ -167,8 +165,6 @@ def acf_normalized(spec, n, plot_range = None, band_size = 40,  skip = [], event
                 widths.append(abs(popt[1])*.02439024) #converting channels to MHz
                 fdc_error_bars.append(perr[1] *.02439024)
                 if abs(popt[0]) > 3*abs(perr[0]): # only want signifgant points
-#                 widths.append(abs(popt[1])*.02439024) #converting channels to MHz
-#                 fdc_error_bars.append(perr[1] *.02439024)
                     xs  = (np.arange(len(final_acf))+1)
                 
             #sometimes it cannot fit this well
@@ -186,8 +182,6 @@ def acf_normalized(spec, n, plot_range = None, band_size = 40,  skip = [], event
     ax.set_ylabel(r"$\mathbf{r}(\Delta \nu)$", fontsize =16)
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
        ncol=2, mode="expand", borderaxespad=0., prop={'size': 13})
-    #plt.legend(bbox_to_anchor=(1, 0), loc='lower right', ncol=1)
-    #return all_acf, significant_bands, widths, fdc_error_bars
     if event_id is not None:
         plt.tight_layout()
         plt.savefig('plots/'+str(event_id)+'acf_bandsize'+str(band_size)+'plot_range'+str(plot_range), dpi=300)
