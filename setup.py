@@ -2,7 +2,10 @@ import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
-
+# packages = \
+# ['frb_spectral_search',
+#  'frb_spectral_search.scintillation',
+#  'frb_spectral_search.scint_and_spectral']
 setuptools.setup(
     name="frb_spectral_search",
     version="0.0.1",
@@ -21,6 +24,9 @@ setuptools.setup(
     "Operating System :: OS Independent",
     ],
     packages=setuptools.find_packages(where="frb_spectral_search"),
+    #
+    py_modules = ['scintillation', 'scint_and_spectral'],
+    
     python_requires=">=3.6",
     install_requires=[
         'numpy>=1.19.2',

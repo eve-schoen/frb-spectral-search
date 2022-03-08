@@ -4,8 +4,8 @@ from baseband_analysis.core.sampling import _upchannel as upchannel
 #this version allows me to upchannel a piece rather than everything, saving lots of time
 
 import scipy.stats
-
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
+
 #imports just for get_smooth_matched_filter_new
 from matplotlib.pyplot import *
 from scipy.stats import median_absolute_deviation
@@ -13,11 +13,17 @@ from baseband_analysis.analysis.snr import get_snr
 from baseband_analysis.core.sampling import fill_waterfall, _scrunch, downsample_power_gaussian, clip
 from baseband_analysis.core.signal import get_main_peak_lim, tiedbeam_baseband_to_power, get_weights
 from common_utils import delay_across_the_band 
-def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False): 
-    #Purpose: calculates noise average and standard deviation based off of off-pulse data
-    #looks at chunks of time equal to the on-burst and processes them identically, 
-    #ww has waterfall and rfi but this upchannelizes and deripples
-    
+def calculate_noise_simple(ww, time_range, on_range, scale =False): 
+    """
+    Upchannelizes and deripples noise spectrums from ww
+
+    :param ww: waterfall with rfi
+    :param time_range: time that the frb is recorded
+    :param on_range: this is when the burst is on (units = bins of time)
+    :param scale: indicates whether you want error bars to be scaled based on the intensity of the on-burst vs off-burst (set true for bright bursts)
+    :returns: an array of the off pulses, an average of those off pulses (=t_sys), the median absolute deivation of them (spec ebar) and the scale factor based on the increased brightness of the pulse over noise (only matters for bright bursts)
+    :prints: the scale factor of error bars
+    """
     noise_ranges =[] 
     l_on = on_range[1]-on_range[0]
     bottom = on_range[0]-2*l_on
@@ -40,27 +46,29 @@ def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False
        1.1574216 , 1.2020986 , 1.2204636 , 1.2236487 , 1.2168874 ,
        1.1857561 , 1.1230892 , 1.0274547 , 0.9002419 , 0.7799086 ,
        0.68808776])
-    big_fix = np.tile(fix, len(spec1d)//16)
-    spec1d = np.multiply(spec1d, 1/big_fix)
-    n_range_specs = spec1d
-    count = 1
-
-    for x in noise_ranges[1:50]:   
+    big_fix = np.tile(fix, 1024)
+    count = 0
+    n_specs = np.empty([2, 50, 1024*16])
+    for x in noise_ranges[:50]:   
         if count%5 ==0:
-            print("spec" + str(count) +" out of " + str(len(noise_ranges)-1))
-        count +=1
+            print("spec " + str(count+1) +" out of " + str(50))
+        
         spec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,x[0]:x[1]], my_freq_id)
-        spec1d = np.sum(np.sum(np.abs(spec)**2,axis = 0),axis = 0)
-        spec1d = np.multiply(spec1d, 1/big_fix)
-        added = np.append(n_range_specs, spec1d)
-        n_range_specs = np.reshape(added, [-1, 1024*16]) #use -1 so it fill in that dimension
-    t_sys = np.nanmean(n_range_specs, 0)
+        
+        #spec1d = np.sum(np.sum(np.abs(spec)**2,axis = 0),axis = 0)
+        spec1d = np.sum(np.abs(spec)**2,axis = 1)
+        n_specs[0, count, :] = np.multiply(spec1d[0], 1/big_fix)
+        n_specs[1, count, :] = np.multiply(spec1d[1], 1/big_fix)
+        count +=1
+    if len(noise_ranges) < 50:
+        print('Warning: less than 50 noise ranges, may be insufficient')
+    t_sys = np.nanmean(n_specs, 1)
     scale_fact = 1
     my_freq_id = np.arange(1024)   
     frbspec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,on_range[0]:on_range[1]], my_freq_id)
     ospec = np.sum(np.sum(np.abs(frbspec)**2,axis = 0),axis = 0)
     ospec = np.multiply(ospec, 1/big_fix)
-    scale_fact_calc = ospec/t_sys
+    scale_fact_calc = ospec/np.sum(t_sys, axis=0)
     scale2  = np.ndarray([])
     for x in scale_fact_calc:
         if x < 1:
@@ -68,28 +76,57 @@ def calculate_noise_simple(ww, time_range, on_range, valid_channels,scale =False
         else:
             scale2 = np.append(scale2, x)          
     if scale:
-        scale_fact = np.nanmean(scale2)
+        scale_fact = np.nanmean(scale2) #scale factor scales error bars up depending on noise of burst to error bars, it's an estimate so not calculating seperately for seperate polarizations
     print('Error bar scaling factor: ' + str(scale_fact))
-    spec_ebar = scipy.stats.median_abs_deviation(n_range_specs, axis=0, nan_policy = 'omit')*scale_fact
-    return n_range_specs, t_sys, spec_ebar, scale_fact_calc
-
-def plot_spectra_seperate_polarizations(ww, start_bin, end_bin, valid_channels, time_range, DM, noise_spec, noise_std):
+    spec_ebar = scipy.stats.median_abs_deviation(n_specs, axis=1, nan_policy = 'omit')*scale_fact
+    return n_specs, t_sys, spec_ebar, scale_fact_calc
+   
+def plot_spectra(ww, start_bin, end_bin, noise_spec, noise_std):
     # Purpose: plotting the onburst spectrum with the Macquart region for expected 21 cm line off of DM
     #shows spectrum after processing (upchannelization and noise subtracting and derippling compared to original spectrum)
     #ww is the data rid of rfi and filled already
+    """
+    Plots the upchannelizes spectrum and off spectrum with error bars determined by standard deviation of noise
+
+    :param ww: waterfall with rfi
+    :param start_bin/end_bin: this is when the burst is on (units = bins of time)
+    :param noise_spec and noise_std: both come from all the noise spectrums, both shape [2, 16*1024]
+    :returns: an array of the off pulses, an average of those off pulses (=t_sys), the median absolute deivation of them (spec ebar) and the scale factor based on the increased brightness of the pulse over noise (only matters for bright bursts)
+    :prints: the scale factor of error bars
+    """   
     my_freq_id = np.arange(1024)   
     frbspec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,start_bin:end_bin], my_freq_id)
     spectras = np.empty(shape=(2, 1024*16))
-    spectras[1, :] = fix_rippling(np.sum(np.abs(frbspec)**2,axis = 1))
-    spectras[0,:] = fix_rippling(np.sum(np.abs(frbspec)**2,axis = 0))
-    print(len(spectra))
-    print(len(spectra[0]))
-    spectra= np.array([fix_rippling_and_subtract_nosie(spectra[0], noise_spec), fix_rippling_and_subtract_nosie(spectra[1], noise_spec)])
-    print(len(spectra))
-    print(len(spectra[0]))
-    return frbspec, frbindexes, spectra, noise_std
-
-def fix_rippling(spectra):
+    temp = np.array(np.sum(np.abs(frbspec)**2,axis = 1))
+    spectras[0, :] = deripple(temp[0])-noise_spec[0,:]
+    spectras[1,:] = deripple(temp[1])-noise_spec[1,:]
+    
+    #original spectrum before upchanneling
+    fluxww = np.sum(np.sum(np.abs(ww[:,:,start_bin:end_bin])**2, axis = 1), axis= 1)
+    ospec = np.array([])
+    for x in fluxww:
+        for i in range(16):
+            if x == 0:
+                ospec = np.append(ospec, np.nan)
+            else:
+                ospec = np.append(ospec, x)
+    #plotting
+    plt.figure(11)
+    plt.fill_between(frbindexes, np.nansum(spectras-noise_std, axis=0),np.nansum(spectras+noise_std, axis=0), color='#006c8a', alpha= .5) 
+     
+    
+    plt.plot(frbindexes, spectras[0,:], color='r', alpha= .7, label='Upchanneld Spectrum - Background, pol1')
+    plt.plot(frbindexes, spectras[1,:], color='y', alpha= .7, label='Upchanneld Spectrum - Background, pol2') 
+    plt.plot(frbindexes, np.nansum(spectras, axis=0), color='#004c8a', alpha= .5, label='Upchanneld Spectrum - Background')
+    plt.plot(frbindexes,ospec , color='#002b44', alpha = .8, label='Original Spectrum')
+    
+    plt.xlabel('Freq. [MHz]', fontsize =16)  
+    plt.ylabel('Proportional to flux [arbitrary units]', fontsize =16)
+    plt.legend()
+    plt.show()
+    
+    return spectras, ospec
+def deripple(spectra):
     fix = np.array([0.67461854, 0.72345924, 0.8339084 , 0.96487784, 1.0780604 ,
        1.1574216 , 1.2020986 , 1.2204636 , 1.2236487 , 1.2168874 ,
        1.1857561 , 1.1230892 , 1.0274547 , 0.9002419 , 0.7799086 ,
@@ -97,7 +134,32 @@ def fix_rippling(spectra):
     big_fix = np.tile(fix, len(spectra)//16)
     spectra = np.multiply(spectra, 1/big_fix)
     return spectra
+#this is not updated for two polarizations maybe will not continue to use it    
+def clean_rfi_more(n, noise_spec, spectra, noise_std):
+    #alters origianl which I dont want :/ 
+    noise_spec2 = np.copy(noise_spec)
+    spectra2 = np.copy(spectra)
+    n2 = np.copy(n)
+    baseline  = np.median(noise_spec)
+    new_rfiup = [noise_spec2> 3*noise_std+baseline] 
+    new_rfidown = [noise_spec2 < baseline - 3*noise_std]
+    new_rfi = np.logical_or(new_rfiup, new_rfidown)[0, :]
+    noise_spec2[new_rfi] = 0
+    spectra2[new_rfi] = 0
+    print(new_rfi.size)
+    print(n.shape)
     
+    #n2[:, :, new_rfi] = 0
+    print(n.shape)
+    (i,j,k) = n.shape
+    n3 = np.empty([i,j,k])
+    #for x in range(i):
+    for y in range(j):
+        temp = n2[:,y,:]
+        temp[new_rfi] = 0
+        n3[:,y,:] = temp
+    return n3, noise_spec2, spectra2
+
 def get_smooth_matched_filter_new(
         data,
         DM = None,
