@@ -26,27 +26,19 @@ def calculate_noise_simple(ww, time_range, on_range, scale =False):
     """
     noise_ranges =[] 
     l_on = on_range[1]-on_range[0]
-    bottom = on_range[0]-2*l_on
+    bottom = on_range[0]-5*l_on
 
     while bottom > time_range[0]:
         noise_ranges.append([bottom, bottom+l_on])
         bottom -= l_on
-    top = on_range[1]+2*l_on+1
+    top = on_range[1]+5*l_on+1
     while top < time_range[1]-1:
         noise_ranges.append([top-l_on, top])
         top += l_on
 
     my_freq_id = np.linspace(0,1023, 1024) 
 
-    #initialize list of spectrums
-    x= noise_ranges[0]
-    spec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,x[0]:x[1]], my_freq_id)
-    spec1d = np.sum(np.sum(np.abs(spec)**2,axis = 0),axis = 0)
-    fix = np.array([0.67461854, 0.72345924, 0.8339084 , 0.96487784, 1.0780604 ,
-       1.1574216 , 1.2020986 , 1.2204636 , 1.2236487 , 1.2168874 ,
-       1.1857561 , 1.1230892 , 1.0274547 , 0.9002419 , 0.7799086 ,
-       0.68808776])
-    big_fix = np.tile(fix, 1024)
+
     count = 0
     n_specs = np.empty([2, 50, 1024*16])
     for x in noise_ranges[:50]:   
@@ -57,8 +49,8 @@ def calculate_noise_simple(ww, time_range, on_range, scale =False):
         
         #spec1d = np.sum(np.sum(np.abs(spec)**2,axis = 0),axis = 0)
         spec1d = np.sum(np.abs(spec)**2,axis = 1)
-        n_specs[0, count, :] = np.multiply(spec1d[0], 1/big_fix)
-        n_specs[1, count, :] = np.multiply(spec1d[1], 1/big_fix)
+        n_specs[0, count, :] = deripple(spec1d[0])
+        n_specs[1, count, :] = deripple(spec1d[1])
         count +=1
     if len(noise_ranges) < 50:
         print('Warning: less than 50 noise ranges, may be insufficient')
@@ -67,7 +59,7 @@ def calculate_noise_simple(ww, time_range, on_range, scale =False):
     my_freq_id = np.arange(1024)   
     frbspec, frbindexes, frbchan_id_upchan = upchannel(ww[:,:,on_range[0]:on_range[1]], my_freq_id)
     ospec = np.sum(np.sum(np.abs(frbspec)**2,axis = 0),axis = 0)
-    ospec = np.multiply(ospec, 1/big_fix)
+    ospec = deripple(ospec)
     scale_fact_calc = ospec/np.sum(t_sys, axis=0)
     scale2  = np.ndarray([])
     for x in scale_fact_calc:

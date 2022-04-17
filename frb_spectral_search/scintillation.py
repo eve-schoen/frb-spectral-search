@@ -7,25 +7,29 @@ from frb_spectral_search.scint_and_spectral import clean_rfi_more
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 
 def freq_fourth(xs, a):
-    return a*xs**4
+    return a*(xs/600)**4
 def exponential(xs, a, exp):
-    return a*xs**exp
+    return a*(xs/600)**exp
 def autocorr_naive_nan(x):
     N = len(x)
     return np.array([np.nanmean((x[iSh:]) * (x[:N-iSh])) for iSh in range(N)])
 def cauchy_func(del_nu,  m, f_dc):
     return m / (del_nu**2 + f_dc**2)
 
-def hmhw_cauchy(acf, exclude_zero = True): #half max half width
+def hmhw_cauchy(acf, ebars = None, exclude_zero = True, truncate=None): #half max half width
+    if truncate is not None:
+        acf= acf[:truncate]
+        ebars = ebars[:truncate]
     if exclude_zero:
         start = 1
         acf= acf[1:]
+        ebars=ebars[1:]
     else:
         start = 0
-    xdata = np.linspace(start, len(acf), len(acf), endpoint=False)
-    popt, pcov = curve_fit(cauchy_func, xdata, acf, bounds=([-np.inf, 0], [np.inf, np.inf]),   check_finite=False)
-    print(popt)
-    return popt[1]
+    xdata = np.linspace(start, len(acf), len(acf), endpoint=False) 
+    #ebars maybe should be scaled up since for on-pulse but calculated from off-pulse but also it's normalized so maybe not?
+    popt, pcov = curve_fit(cauchy_func, xdata, acf, sigma = ebars, bounds=([0, 0], [np.inf, np.inf]),   check_finite=False)
+    return popt, pcov
         
 def plot_bands(all_acf, bands,widths, error_bars,  remove_nan=True):
     if remove_nan:
@@ -153,8 +157,8 @@ def acf_normalized(spec, n, plot_range = None, band_size = 40,  skip = [], event
     offs_std = []
     for i in range(num_bands):
         if i in skip:
-            all_acf.append([])
-            offs_std.append([])
+            #all_acf.append([])# not fully sure why this was done
+            #offs_std.append([])
             pass
         else:
             spec_slice_on = smoothdivided_spec_on[i*band_size_channels:(i+1)*band_size_channels]
@@ -184,7 +188,7 @@ def acf_normalized(spec, n, plot_range = None, band_size = 40,  skip = [], event
                     ax.xaxis.set_minor_locator(MultipleLocator(1))
         start += band_size_channels
         
-    #fitting cauchy function to each acf abnd
+    #fitting cauchy function to each acf band
     widths =[]
     fdc_error_bars = []
     count = 0
@@ -192,25 +196,31 @@ def acf_normalized(spec, n, plot_range = None, band_size = 40,  skip = [], event
         truncate = plot_range
     else:
         truncate = 0
-    for i in all_acf: 
-        if i != []:
-            b=np.array(i)
-            b = b[~np.isnan(b)]
-            try:
-                popt, pcov  = hmhw_cauchy(b, sigma = offs_std[count]  , exclude_zero =True, truncate = truncate)
-                perr = np.sqrt(np.diag(pcov)) #one standard deviation error
-                print('m: ' + str(popt[0]) + '+/-'+str(pcov[0]))
-                widths.append(abs(popt[1])*.02439024) #converting channels to MHz
-                fdc_error_bars.append(perr[1] *.02439024)
-                if abs(popt[0]) > 3*abs(perr[0]): # only want signifgant points
-                    xs  = (np.arange(len(final_acf))+1)
+    skip_adjustment = 0
+    skip2 = skip.copy()
+    for idx, i in enumerate(all_acf): 
+        b=np.array(i)
+        b = b[~np.isnan(b)]
+        try:
+            popt, pcov  = hmhw_cauchy(b, ebars = offs_std[idx]  , exclude_zero =True, truncate = truncate)
+            #popt, pcov  = hmhw_cauchy(b)
+                
+            perr = np.sqrt(np.diag(pcov)) #one standard deviation error
+            print('m: ' + str(popt[0]) + '+/-'+str(pcov[0]))
+            widths.append(abs(popt[1])*.02439024) #converting channels to MHz
+            fdc_error_bars.append(perr[1] *.02439024)
+            if abs(popt[0]) > 3*abs(perr[0]): # only want signifgant points
+                xs  = (np.arange(len(final_acf))+1)
                 
             #sometimes it cannot fit this well
-                    ax.plot(xs1+.024, cauchy_func(xs, popt[0], popt[1])+(num_bands-len(skip)-count+1)*.2*scale-.2, 'k--', alpha = .8 )
+                if idx > skip2[0]-(skip_adjustment+1):
+                    skip_adjustment += 1
+                    skip2.pop(0)
+                ax.plot(xs1+.024, cauchy_func(xs, popt[0], popt[1])+(num_bands-len(skip)-count+1-skip_adjustment)*.2*scale-.2, 'k--', alpha = .8 )
    
                     
-            except:
-                print('not able to fit to find bandwidth for ' +str(count)+ " band")
+        except:
+            print('not able to fit to find bandwidth for ' +str(count)+ " band")
         
         count += 1
     ax.set_ylim([-0.5, 3])
@@ -224,7 +234,7 @@ def acf_normalized(spec, n, plot_range = None, band_size = 40,  skip = [], event
         plt.tight_layout()
         plt.savefig('plots/'+str(event_id)+'acf_bandsize'+str(band_size)+'plot_range'+str(plot_range), dpi=300)
     return all_acf, bands, widths, fdc_error_bars, smooth
-def run_acf(spectras, noise_spec, n, noise_std,plot_range = 100, band_size = 40, skip = [], i=None, event_id=None):
+def run_acf(spectras, n, plot_range = 100, band_size = 40, skip = [], i=None, event_id=None):
     #i indicates polarization if none assume combined
     if i is None:
         newn =  np.nansum(n, axis=0)
@@ -234,10 +244,9 @@ def run_acf(spectras, noise_spec, n, noise_std,plot_range = 100, band_size = 40,
         newn=n[i,:,:]
         newspec=  spectras[i,:]
         pol=str(i)
-    print(newn.shape)
     all_acf, bands, widths, error_bars, smooth = acf_normalized(newspec, newn, plot_range = plot_range, band_size = band_size, skip = skip)
     if event_id is not None:
-        plt.savefig('/data/user-data/eveschn/code/plots/'+str(event_id)+'acf_bandsize'+str(band_size)+'plot_range'+str(plot_range)+'pol'+pol, dpi=300)
+        plt.savefig('/data/user-data/eveschn/code/plots/'+str(event_id)+'acf_bandsize'+str(round(band_size))+'plot_range'+str(plot_range)+'pol'+pol, dpi=300)
     return all_acf, bands, widths, error_bars, smooth
 
 def save_data(data, event_id, spectra, n, smooth=None):
